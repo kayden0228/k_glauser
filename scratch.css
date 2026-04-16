@@ -1,0 +1,304 @@
+/* =============================================
+   scratch.css — Kayden Glauser Travel Page
+   Custom stylesheet — no Bootstrap
+   ============================================= */
+
+/* --- Global reset & base --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Style 1: Body — font family, color, background */
+body {
+  font-family: 'Open Sans', Arial, sans-serif;
+  color: #2c3e50;
+  background-color: #f4f6f9;
+  line-height: 1.7;
+}
+
+/* --- DIV 1: Navigation bar --- */
+/* Style 2: Navbar — background, font color */
+#navbar {
+  background-color: #1a3c5e;
+  padding: 0 24px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+#navbar a {
+  color: #d6e8f5;
+  text-decoration: none;
+  font-family: 'Open Sans', Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 14px 12px;
+  display: inline-block;
+  transition: color 0.2s;
+}
+
+#navbar a:hover {
+  color: #2a9d8f;
+}
+
+/* --- DIV 2: Hero banner --- */
+/* Style 3: Hero — font family, color, gradient background */
+#hero {
+  background: linear-gradient(135deg, #1a3c5e 0%, #0d5c6b 100%);
+  color: #ffffff;
+  text-align: center;
+  padding: 80px 20px 60px;
+}
+
+#hero h1 {
+  font-family: 'Merriweather', Georgia, serif;
+  font-size: 3rem;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+}
+
+#hero p {
+  font-size: 1.1rem;
+  color: #b8d8ea;
+  font-style: italic;
+  margin-bottom: 28px;
+}
+
+#hero-btn {
+  display: inline-block;
+  background-color: #2a9d8f;
+  color: #ffffff;
+  text-decoration: none;
+  font-family: 'Open Sans', Arial, sans-serif;
+  font-weight: 600;
+  padding: 12px 32px;
+  border-radius: 30px;
+  font-size: 0.95rem;
+  transition: background-color 0.2s;
+}
+
+#hero-btn:hover {
+  background-color: #21867a;
+}
+
+/* --- DIV 3: Table of contents --- */
+/* Style 4: TOC — font color, border accent */
+#toc {
+  max-width: 700px;
+  margin: 30px auto;
+  padding: 20px 30px;
+  background-color: #e8f0f7;
+  border-left: 5px solid #2a9d8f;
+  border-radius: 4px;
+  font-family: 'Open Sans', Arial, sans-serif;
+}
+
+#toc h3 {
+  font-family: 'Merriweather', Georgia, serif;
+  color: #1a3c5e;
+  margin-bottom: 10px;
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+#toc ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#toc ul li a {
+  color: #1a3c5e;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  background-color: #ffffff;
+  padding: 4px 14px;
+  border-radius: 20px;
+  border: 1px solid #b0c8e0;
+  display: inline-block;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+#toc ul li a:hover {
+  background-color: #2a9d8f;
+  color: #ffffff;
+  border-color: #2a9d8f;
+}
+
+/* --- DIV 4: Content sections --- */
+/* Style 5: Section — background, spacing, heading font */
+.section {
+  max-width: 900px;
+  margin: 30px auto;
+  padding: 36px 44px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+}
+
+.section h2 {
+  font-family: 'Merriweather', Georgia, serif;
+  color: #1a3c5e;
+  font-size: 1.7rem;
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 3px solid #2a9d8f;
+  display: inline-block;
+}
+
+.section p {
+  margin-bottom: 14px;
+  font-size: 1rem;
+}
+
+.section-intro {
+  color: #5a6a7a;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+
+/* Alternate section background */
+.alt-section {
+  background-color: #eef4fb;
+}
+
+/* Style 6: Marshall Islands section — teal background, white text */
+.marshall-section {
+  background-color: #0d5c6b;
+  color: #eaf6f4;
+}
+
+.marshall-section h2 {
+  color: #a8e6df;
+  border-bottom-color: #a8e6df;
+}
+
+/* Style 7: Kenya section — dark navy background, white text */
+.kenya-section {
+  background-color: #0a2846;
+  color: #d6e8f5;
+}
+
+.kenya-section h2 {
+  color: #90c4e8;
+  border-bottom-color: #90c4e8;
+}
+
+/* Images */
+.section-img {
+  width: 100%;
+  max-width: 480px;
+  display: block;
+  margin: 0 auto 20px;
+  border-radius: 6px;
+  border: 3px solid rgba(255,255,255,0.3);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+/* Lists */
+.list-label {
+  font-family: 'Open Sans', Arial, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #1a3c5e;
+  margin: 24px 0 10px;
+}
+
+ol {
+  padding-left: 24px;
+  margin-bottom: 10px;
+}
+
+ol li {
+  font-weight: 700;
+  color: #1a3c5e;
+  font-size: 1rem;
+  margin-bottom: 12px;
+}
+
+/* Style 8: Nested unordered list — font color, family */
+ul.nested-list, ol li ul {
+  list-style: disc;
+  padding-left: 22px;
+  margin-top: 6px;
+}
+
+ol li ul li {
+  font-weight: 400;
+  color: #4a5a6a;
+  font-size: 0.93rem;
+  margin-bottom: 4px;
+}
+
+/* DIV 5: Video wrapper */
+#video-wrapper {
+  text-align: center;
+  margin: 20px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+
+/* DIV 6: Tableau wrapper */
+#tableau-wrapper {
+  margin: 20px 0;
+  min-height: 500px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  background: #ffffff;
+}
+
+/* DIV 7: Footer */
+/* Style 9: Footer — font family, color, background */
+#footer {
+  background-color: #1a3c5e;
+  color: #b8d0e8;
+  text-align: center;
+  padding: 30px 20px;
+  margin-top: 40px;
+  font-family: 'Open Sans', Arial, sans-serif;
+  font-size: 14px;
+}
+
+#footer p {
+  margin-bottom: 12px;
+}
+
+#footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+#footer-links a {
+  color: #2a9d8f;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+
+#footer-links a:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+#footer-copy {
+  color: rgba(255,255,255,0.35);
+  font-size: 0.8rem;
+}

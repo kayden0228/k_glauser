@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Avalanche Pong | Kayden Glauser</title>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background: #060c16;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ---- Nav ---- */
+    .game-nav {
+      width: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      padding: 14px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #6F263D;
+    }
+    .game-nav a {
+      color: rgba(255,255,255,0.75);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+    .game-nav a:hover { color: #A2AAAD; }
+    .game-nav .brand { color: #fff; font-size: 1rem; font-weight: 700; }
+
+    /* ---- Game wrapper ---- */
+    .game-wrapper {
+      position: relative;
+      margin: 22px auto;
+      display: inline-block;
+    }
+
+    canvas {
+      display: block;
+      border: 3px solid #6F263D;
+      border-radius: 10px;
+      box-shadow:
+        0 0 40px rgba(111, 38, 61, 0.45),
+        0 0 80px rgba(35, 97, 146, 0.2),
+        0 20px 60px rgba(0,0,0,0.6);
+    }
+
+    /* ---- Arrow key HUD ---- */
+    .key-hud {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      background: rgba(0, 0, 0, 0.72);
+      border: 1px solid rgba(162,170,173,0.25);
+      border-radius: 12px;
+      padding: 12px 16px;
+      backdrop-filter: blur(6px);
+      user-select: none;
+    }
+    .key-hud-title {
+      text-align: center;
+      color: #A2AAAD;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .key-column {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    .key-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+    .key-btn {
+      width: 34px;
+      height: 30px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      color: white;
+      transition: background 0.1s, border-color 0.1s;
+      font-family: sans-serif;
+    }
+    .key-btn.lit {
+      background: rgba(111, 38, 61, 0.7);
+      border-color: #6F263D;
+      box-shadow: 0 0 8px rgba(111,38,61,0.6);
+    }
+    .key-lbl {
+      font-size: 8px;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 0.5px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav class="game-nav">
+    <a href="index.html">← Portfolio</a>
+    <span class="brand">🏒 Avalanche Pong</span>
+    <a href="scratch.html">Travel Page</a>
+  </nav>
+
+  <!-- Game -->
+  <div class="game-wrapper">
+    <canvas id="pong" width="900" height="540"></canvas>
+
+    <!-- Arrow Key HUD — shows which keys to use and lights up when pressed -->
+    <div class="key-hud">
+      <div class="key-hud-title">Controls</div>
+      <div class="key-column">
+        <div class="key-item">
+          <div class="key-btn" id="kUp">↑</div>
+          <div class="key-lbl">UP</div>
+        </div>
+        <div class="key-item">
+          <div class="key-btn" id="kDown">↓</div>
+          <div class="key-lbl">DOWN</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ================================================================
+  //  AVALANCHE PONG — Colorado Avalanche Hockey Rink Edition
+  //  AI-assisted single-page web app
+  // ================================================================
+
+  const canvas = document.getElementById('pong');
+  const ctx    = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // Colorado Avalanche palette
+  const C = {
+    ice:     '#D6EDF7',
+    red:     '#C8102E',
+    blue:    '#0033A0',
+    burg:    '#6F263D',
+    avsBlue: '#236192',
+    silver:  '#A2AAAD',
+  };
+
+  // Preload Avalanche logo image
+  const avsImg = new Image();
+  avsImg.src = 'images/avalanche.png';
+
+  const PAD    = { w: 14, h: 90, offset: 30 };
+  const BALL_R = 9;
+  const WIN    = 7;
+
+  // Game state
+  let state  = 'start';   // start | playing | scored | gameover
+  let pScore = 0, aScore = 0, winner = '';
+  let stTimer = 0;
+  let keys = {};
+
+  let player = { y: H / 2 - PAD.h / 2 };
+  let ai     = { y: H / 2 - PAD.h / 2 };
+  let ball   = { x: W / 2, y: H / 2, vx: 0, vy: 0 };
+
+  // ---- Ball reset ----
+  function resetBall(dir) {
+    ball.x = W / 2;
+    ball.y = H / 2;
+    const spd = 5.5;
+    const ang = (Math.random() * 0.6 - 0.3);
+    ball.vx = dir * spd * Math.cos(ang);
+    ball.vy = spd * Math.sin(ang);
+  }
+
+  // ================================================================
+  //  DRAW: Colorado Avalanche Hockey Rink
+  // ================================================================
+  function drawRink() {
+    // Ice surface with radial gradient (center brighter, edges darker)
+    const grad = ctx.createRadialGradient(W/2, H/2, 30, W/2, H/2, W * 0.72);
+    grad.addColorStop(0,   '#EBF8FF');
+    grad.addColorStop(0.5, '#D6EDF7');
+    grad.addColorStop(1,   '#C2E2F2');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Red goal lines
+    ctx.strokeStyle = C.red;
+    ctx.lineWidth = 3;
+    vline(55);
+    vline(W - 55);
+
+    // Blue lines
+    ctx.strokeStyle = C.blue;
+    ctx.lineWidth = 7;
+    vline(Math.round(W * 0.285));
+    vline(Math.round(W * 0.715));
+
+    // Center red line (dashed)
+    ctx.strokeStyle = C.red;
+    ctx.lineWidth   = 5;
+    ctx.setLineDash([18, 12]);
+    vline(W / 2);
+    ctx.setLineDash([]);
+
+    // Center circle
+    strokeCircle(W/2, H/2, 72, C.red, 2.5);
+
+    // Center dot
+    fillCircle(W/2, H/2, 5.5, C.red);
+
+    // Face-off circles + hash marks (4 zones)
+    for (const fx of [185, W - 185]) {
+      for (const fy of [H * 0.285, H * 0.715]) {
+        strokeCircle(fx, fy, 44, C.red, 2);
+        fillCircle(fx, fy, 4, C.red);
+        hashMarks(fx, fy);
+      }
+    }
+
+    // Goal creases (semi-circles, pale blue)
+    drawCrease(55,     H/2,  1);
+    drawCrease(W - 55, H/2, -1);
+
+    // Goal nets
+    drawNet(2,      H/2);
+    drawNet(W - 26, H/2);
+
+    // Boards border
+    ctx.strokeStyle = 'rgba(100,100,100,0.45)';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    rrect(2, 2, W - 4, H - 4, 22);
+    ctx.stroke();
+
+    // Colorado Avalanche center-ice logo
+    drawAvsLogo(W/2, H/2);
+  }
+
+  // ---- Rink drawing helpers ----
+  function vline(x) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  function strokeCircle(cx, cy, r, color, lw) {
+    ctx.strokeStyle = color; ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  }
+  function fillCircle(cx, cy, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  }
+  function hashMarks(cx, cy) {
+    ctx.strokeStyle = C.red; ctx.lineWidth = 2;
+    const s = 12, g = 7;
+    for (const [sx, sy] of [[1,1],[1,-1],[-1,1],[-1,-1]]) {
+      ctx.beginPath();
+      ctx.moveTo(cx + sx*g,     cy + sy*g);
+      ctx.lineTo(cx + sx*g,     cy + sy*(g+s));
+      ctx.moveTo(cx + sx*g,     cy + sy*g);
+      ctx.lineTo(cx + sx*(g+s), cy + sy*g);
+      ctx.stroke();
+    }
+  }
+  function drawCrease(goalX, cy, dir) {
+    ctx.fillStyle   = 'rgba(0,51,160,0.13)';
+    ctx.strokeStyle = C.red; ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (dir === 1) {
+      ctx.arc(goalX, cy, 54, -Math.PI*0.5, Math.PI*0.5);
+      ctx.lineTo(goalX, cy - 54);
+    } else {
+      ctx.arc(goalX, cy, 54, Math.PI*0.5, Math.PI*1.5);
+      ctx.lineTo(goalX, cy + 54);
+    }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  function drawNet(x, cy) {
+    const nw = 22, nh = 78, ny = cy - nh/2;
+    ctx.fillStyle = 'rgba(200,200,200,0.32)';
+    ctx.strokeStyle = 'rgba(100,100,100,0.55)'; ctx.lineWidth = 1.5;
+    ctx.fillRect(x, ny, nw, nh); ctx.strokeRect(x, ny, nw, nh);
+    ctx.strokeStyle = 'rgba(130,130,130,0.3)'; ctx.lineWidth = 0.5;
+    for (let i = 1; i < 5; i++) {
+      ctx.beginPath(); ctx.moveTo(x + i*(nw/5), ny); ctx.lineTo(x + i*(nw/5), ny+nh); ctx.stroke();
+    }
+    for (let i = 1; i < 9; i++) {
+      ctx.beginPath(); ctx.moveTo(x, ny + i*(nh/9)); ctx.lineTo(x+nw, ny + i*(nh/9)); ctx.stroke();
+    }
+  }
+
+  // ---- Colorado Avalanche "A" logo at center ice ----
+  function drawAvsLogo(cx, cy) {
+    if (!avsImg.complete || avsImg.naturalWidth === 0) return;
+    const size = 160; // display size on the ice
+    ctx.save();
+    ctx.globalAlpha = 0.22;
+    ctx.drawImage(avsImg, cx - size / 2, cy - size / 2, size, size);
+    ctx.restore();
+  }
+
+  // ================================================================
+  //  DRAW: Paddles
+  // ================================================================
+  function drawPaddles() {
+    drawPad(PAD.offset,             player.y, C.burg,    '#9a3a58', 'YOU');
+    drawPad(W - PAD.offset - PAD.w, ai.y,     C.avsBlue, '#3488c0', 'CPU');
+  }
+
+  function drawPad(x, y, c1, c2, label) {
+    const { w, h } = PAD;
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath(); rrect(x+3, y+3, w, h, 5); ctx.fill();
+    // Gradient body
+    const g = ctx.createLinearGradient(x, 0, x+w, 0);
+    g.addColorStop(0,    c1);
+    g.addColorStop(0.55, c2);
+    g.addColorStop(1,    c1);
+    ctx.fillStyle = g;
+    ctx.beginPath(); rrect(x, y, w, h, 5); ctx.fill();
+    // Highlight strip
+    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    ctx.beginPath(); rrect(x+2, y+6, 3, h-12, 2); ctx.fill();
+    // Rotated label
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+    ctx.font = 'bold 8px Montserrat, Arial';
+    ctx.textAlign = 'center';
+    ctx.translate(x + w/2, y + h/2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(label, 0, 1);
+    ctx.restore();
+  }
+
+  // ================================================================
+  //  DRAW: Puck
+  // ================================================================
+  function drawBall() {
+    // Motion trail
+    ctx.fillStyle = 'rgba(0,0,0,0.06)';
+    ctx.beginPath();
+    ctx.ellipse(ball.x - ball.vx*2.2, ball.y - ball.vy*2.2,
+                BALL_R*0.65, BALL_R*0.45, Math.atan2(ball.vy, ball.vx), 0, Math.PI*2);
+    ctx.fill();
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath();
+    ctx.ellipse(ball.x+3, ball.y+3, BALL_R, BALL_R*0.75, 0, 0, Math.PI*2);
+    ctx.fill();
+    // Puck body
+    const pg = ctx.createRadialGradient(ball.x-2, ball.y-3, 1, ball.x, ball.y, BALL_R);
+    pg.addColorStop(0,   '#666');
+    pg.addColorStop(0.7, '#222');
+    pg.addColorStop(1,   '#111');
+    ctx.fillStyle = pg;
+    ctx.beginPath();
+    ctx.ellipse(ball.x, ball.y, BALL_R, BALL_R*0.8, 0, 0, Math.PI*2);
+    ctx.fill();
+    // Glint
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(ball.x-2, ball.y-3, BALL_R*0.45, BALL_R*0.28, -0.3, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // ================================================================
+  //  DRAW: HUD / overlays
+  // ================================================================
+  function drawHUD() {
+    const bw = 164, bh = 56, bx = W/2-bw/2, by = 9;
+    ctx.fillStyle   = 'rgba(0,0,0,0.58)';
+    ctx.strokeStyle = 'rgba(162,170,173,0.25)'; ctx.lineWidth = 1;
+    ctx.beginPath(); rrect(bx, by, bw, bh, 28); ctx.fill(); ctx.stroke();
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = C.burg;
+    ctx.font = 'bold 30px Montserrat, Arial';
+    ctx.fillText(pScore, W/2 - 14, by + 42);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.font = 'bold 22px Montserrat, Arial';
+    ctx.fillText(':', W/2, by + 42);
+
+    ctx.textAlign = 'left';
+    ctx.fillStyle = C.avsBlue;
+    ctx.font = 'bold 30px Montserrat, Arial';
+    ctx.fillText(aScore, W/2 + 16, by + 42);
+
+    ctx.font = '9px Montserrat, Arial';
+    ctx.fillStyle = 'rgba(162,170,173,0.8)';
+    ctx.textAlign = 'right';
+    ctx.fillText('YOU', W/2 - 14, by + 17);
+    ctx.textAlign = 'left';
+    ctx.fillText('CPU', W/2 + 16, by + 17);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.font = '9px Montserrat, Arial';
+    ctx.fillText('FIRST TO ' + WIN + ' GOALS', W/2, H - 10);
+  }
+
+  function drawStartScreen() {
+    ctx.fillStyle = 'rgba(6,12,22,0.8)';
+    ctx.fillRect(0, 0, W, H);
+
+    const cw = 450, ch = 290, cx = W/2-cw/2, cy = H/2-ch/2;
+    ctx.fillStyle = 'rgba(12,22,45,0.95)';
+    ctx.strokeStyle = C.burg; ctx.lineWidth = 2;
+    ctx.beginPath(); rrect(cx, cy, cw, ch, 18); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = C.burg; ctx.fillRect(cx, cy, cw, 5);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = C.silver;
+    ctx.font = 'bold 36px Montserrat, Arial';
+    ctx.fillText('AVALANCHE PONG', W/2, cy + 60);
+
+    ctx.fillStyle = C.burg;
+    ctx.font = '14px Montserrat, Arial';
+    ctx.fillText('Colorado Avalanche Edition  🏒', W/2, cy + 90);
+
+    ctx.fillStyle = 'rgba(162,170,173,0.2)';
+    ctx.fillRect(W/2 - 170, cy + 108, 340, 1);
+
+    ctx.fillStyle = 'rgba(255,255,255,0.72)';
+    ctx.font = '14px Montserrat, Arial';
+    ctx.fillText('Use  ↑ ↓  arrow keys to move your paddle', W/2, cy + 140);
+    ctx.fillText('First to ' + WIN + ' goals wins the game!', W/2, cy + 166);
+
+    if (Math.floor(Date.now() / 600) % 2 === 0) {
+      ctx.fillStyle = '#f4a261';
+      ctx.font = 'bold 17px Montserrat, Arial';
+      ctx.fillText('Press  SPACE  or  ENTER  to start', W/2, cy + 232);
+    }
+  }
+
+  function drawGameOver() {
+    ctx.fillStyle = 'rgba(5,12,25,0.85)';
+    ctx.fillRect(0, 0, W, H);
+
+    const cw = 470, ch = 310, cx = W/2-cw/2, cy = H/2-ch/2;
+    const accent = winner === 'player' ? C.burg : C.avsBlue;
+    ctx.fillStyle = 'rgba(10,20,42,0.96)';
+    ctx.strokeStyle = accent; ctx.lineWidth = 2;
+    ctx.beginPath(); rrect(cx, cy, cw, ch, 18); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = accent; ctx.fillRect(cx, cy, cw, 5);
+
+    ctx.textAlign = 'center';
+    if (winner === 'player') {
+      ctx.fillStyle = '#FFD700';
+      ctx.font = 'bold 48px Montserrat, Arial';
+      ctx.fillText('🏆  YOU WIN!', W/2, cy + 70);
+      ctx.fillStyle = 'rgba(255,255,255,0.78)';
+      ctx.font = '16px Montserrat, Arial';
+      ctx.fillText("You beat the CPU! Let's Go Avs! 🏒", W/2, cy + 106);
+    } else {
+      ctx.fillStyle = C.avsBlue;
+      ctx.font = 'bold 48px Montserrat, Arial';
+      ctx.fillText('CPU WINS', W/2, cy + 70);
+      ctx.fillStyle = 'rgba(255,255,255,0.78)';
+      ctx.font = '16px Montserrat, Arial';
+      ctx.fillText("Tough game — give it another shot!", W/2, cy + 106);
+    }
+    ctx.fillStyle = 'rgba(162,170,173,0.9)';
+    ctx.font = 'bold 22px Montserrat, Arial';
+    ctx.fillText('Final Score: ' + pScore + ' — ' + aScore, W/2, cy + 154);
+
+    if (Math.floor(Date.now() / 600) % 2 === 0) {
+      ctx.fillStyle = '#f4a261';
+      ctx.font = 'bold 16px Montserrat, Arial';
+      ctx.fillText('Press  SPACE  or  ENTER  to play again', W/2, cy + 248);
+    }
+  }
+
+  function drawGoalFlash() {
+    if (stTimer > 55) {
+      const a = ((stTimer - 55) / 35) * 0.55;
+      ctx.fillStyle = 'rgba(200,16,46,' + a + ')';
+      ctx.fillRect(0, 0, W, H);
+      ctx.textAlign   = 'center';
+      ctx.fillStyle   = '#ffffff';
+      ctx.shadowColor = C.red;
+      ctx.shadowBlur  = 28;
+      ctx.font = 'bold 72px Montserrat, Arial';
+      ctx.fillText('GOAL!', W/2, H/2 + 26);
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  // ================================================================
+  //  GAME LOGIC
+  // ================================================================
+  function movePlayer() {
+    if (keys['ArrowUp']) {
+      player.y = Math.max(3, player.y - 7);
+      document.getElementById('kUp').classList.add('lit');
+    } else {
+      document.getElementById('kUp').classList.remove('lit');
+    }
+    if (keys['ArrowDown']) {
+      player.y = Math.min(H - PAD.h - 3, player.y + 7);
+      document.getElementById('kDown').classList.add('lit');
+    } else {
+      document.getElementById('kDown').classList.remove('lit');
+    }
+  }
+
+  function moveAI() {
+    const center = ai.y + PAD.h / 2;
+    const diff   = Math.min(0.88, 0.56 + (pScore + aScore) * 0.02);
+    const spd    = 5.4 * diff;
+    const target = ball.y + (Math.random() - 0.5) * 22;
+    if (center < target - 5) ai.y += spd;
+    else if (center > target + 5) ai.y -= spd;
+    ai.y = Math.max(3, Math.min(H - PAD.h - 3, ai.y));
+  }
+
+  function moveBall() {
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    // Wall bounces (top / bottom)
+    if (ball.y - BALL_R <= 3)     { ball.y = BALL_R + 3;      ball.vy =  Math.abs(ball.vy); beep(260, 0.06); }
+    if (ball.y + BALL_R >= H - 3) { ball.y = H - BALL_R - 3;  ball.vy = -Math.abs(ball.vy); beep(260, 0.06); }
+
+    // Player paddle (left)
+    const prx = PAD.offset + PAD.w;
+    if (ball.vx < 0
+        && ball.x - BALL_R <= prx
+        && ball.x - BALL_R >= prx - 16
+        && ball.y >= player.y - BALL_R
+        && ball.y <= player.y + PAD.h + BALL_R) {
+      ball.x = prx + BALL_R;
+      reflect(player.y, 1);
+      beep(440, 0.09);
+    }
+
+    // AI paddle (right)
+    const alx = W - PAD.offset - PAD.w;
+    if (ball.vx > 0
+        && ball.x + BALL_R >= alx
+        && ball.x + BALL_R <= alx + 16
+        && ball.y >= ai.y - BALL_R
+        && ball.y <= ai.y + PAD.h + BALL_R) {
+      ball.x = alx - BALL_R;
+      reflect(ai.y, -1);
+      beep(440, 0.09);
+    }
+  }
+
+  function reflect(paddleY, dir) {
+    const hitPos = (ball.y - paddleY) / PAD.h;
+    const angle  = (hitPos - 0.5) * Math.PI * 0.65;
+    const spd    = Math.min(Math.hypot(ball.vx, ball.vy) * 1.06, 15);
+    ball.vx = dir * spd * Math.cos(angle);
+    ball.vy = spd * Math.sin(angle);
+  }
+
+  function checkScore() {
+    if (ball.x < -30) {
+      aScore++;
+      beep(180, 0.45, 'sine');
+      handleScore(1);   // serve toward AI — player defends again
+    } else if (ball.x > W + 30) {
+      pScore++;
+      beep(660, 0.45, 'sine');
+      handleScore(-1);  // serve toward player — AI defends again
+    }
+  }
+
+  function handleScore(dir) {
+    if (pScore >= WIN) { state = 'gameover'; winner = 'player'; return; }
+    if (aScore >= WIN) { state = 'gameover'; winner = 'cpu';    return; }
+    state   = 'scored';
+    stTimer = 90;
+    resetBall(dir);
+  }
+
+  // ================================================================
+  //  AUDIO — retro beeps
+  // ================================================================
+  let audioCtx = null;
+  function getACtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+  function beep(freq, dur, type) {
+    type = type || 'square';
+    try {
+      const a = getACtx(), o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.08, a.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, a.currentTime + dur);
+      o.start(); o.stop(a.currentTime + dur);
+    } catch(e) {}
+  }
+
+  // ================================================================
+  //  HELPER — rounded rectangle path (no ctx.roundRect for older browsers)
+  // ================================================================
+  function rrect(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y,     x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r,     y + h);
+    ctx.quadraticCurveTo(x,     y + h, x,     y + h - r);
+    ctx.lineTo(x,     y + r);
+    ctx.quadraticCurveTo(x,     y,     x + r, y);
+    ctx.closePath();
+  }
+
+  // ================================================================
+  //  GAME LOOP
+  // ================================================================
+  function loop() {
+    drawRink();
+
+    if (state === 'start') {
+      drawStartScreen();
+    } else {
+      if (state === 'playing') {
+        movePlayer();
+        moveAI();
+        moveBall();
+        checkScore();
+      } else if (state === 'scored') {
+        stTimer--;
+        if (stTimer <= 0) state = 'playing';
+      }
+      drawPaddles();
+      drawBall();
+      drawHUD();
+      if (state === 'scored')   drawGoalFlash();
+      if (state === 'gameover') drawGameOver();
+    }
+
+    requestAnimationFrame(loop);
+  }
+
+  // ================================================================
+  //  INPUT
+  // ================================================================
+  window.addEventListener('keydown', function(e) {
+    keys[e.key] = true;
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault();
+    if (e.key === ' ' || e.key === 'Enter') {
+      if (state === 'start' || state === 'gameover') {
+        if (state === 'gameover') {
+          pScore = 0; aScore = 0;
+          player.y = H/2 - PAD.h/2;
+          ai.y     = H/2 - PAD.h/2;
+        }
+        resetBall(1);
+        state = 'playing';
+      }
+    }
+  });
+  window.addEventListener('keyup', function(e) { keys[e.key] = false; });
+
+  // Kick it off
+  requestAnimationFrame(loop);
+  </script>
+
+</body>
+</html>
